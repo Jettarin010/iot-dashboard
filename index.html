@@ -4,136 +4,178 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Realtime IoT Dashboard</title>
-    <!-- ใช้ Google Fonts: Kanit -->
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
         body {
             font-family: 'Kanit', sans-serif;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
             color: white;
             min-height: 100vh;
-            margin: 0;
+            padding: 2rem 1rem;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 1.8rem;
+            margin-bottom: 0.5rem;
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.5);
+        }
+
+        .subtitle {
+            text-align: center;
+            font-size: 0.9rem;
+            opacity: 0.6;
+            margin-bottom: 2rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 1.5rem;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: rgba(255,255,255,0.08);
+            backdrop-filter: blur(12px);
+            border-radius: 16px;
+            padding: 1.5rem;
+            border: 1px solid rgba(255,255,255,0.12);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            transition: transform 0.3s, box-shadow 0.3s;
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 2rem;
-        }
-        h1 {
-            margin-bottom: 2rem;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
-        .dashboard {
-            display: flex;
-            gap: 2rem;
-            width: 100%;
-            max-width: 800px;
-            flex-wrap: wrap; /* รองรับมือถือ */
-        }
-        .card {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 15px;
-            padding: 2rem;
-            flex: 1 1 300px; /* ยืดหยุ่นขนาด */
             text-align: center;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            transition: transform 0.3s;
         }
-        .card:hover { 
-            transform: translateY(-5px); 
+        .card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 16px 40px rgba(0,0,0,0.4);
         }
-        .value {
-            font-size: 4rem;
+
+        .card-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+        .card-label { font-size: 1rem; opacity: 0.8; margin-bottom: 0.5rem; }
+        .card-value {
+            font-size: 3rem;
             font-weight: 600;
-            margin: 1rem 0;
-            color: #00ffcc;
-            text-shadow: 0 0 10px rgba(0, 255, 204, 0.5);
+            line-height: 1;
+            margin-bottom: 0.25rem;
         }
-        .label {
-            font-size: 1.2rem;
-            opacity: 0.9;
+        .card-unit { font-size: 1rem; opacity: 0.7; }
+
+        /* สีแต่ละการ์ด */
+        .card-temp  .card-value { color: #ff6b6b; text-shadow: 0 0 12px rgba(255,107,107,0.5); }
+        .card-humi  .card-value { color: #74b9ff; text-shadow: 0 0 12px rgba(116,185,255,0.5); }
+        .card-light .card-value { color: #ffeaa7; text-shadow: 0 0 12px rgba(255,234,167,0.5); }
+        .card-co2   .card-value { color: #a29bfe; text-shadow: 0 0 12px rgba(162,155,254,0.5); }
+        .card-pres  .card-value { color: #00cec9; text-shadow: 0 0 12px rgba(0,206,201,0.5); }
+        .card-noise .card-value { color: #fd79a8; text-shadow: 0 0 12px rgba(253,121,168,0.5); }
+
+        .status-bar {
+            text-align: center;
+            margin-top: 2rem;
+            font-size: 0.85rem;
+            opacity: 0.6;
         }
-        .time {
-            font-size: 0.9rem;
-            opacity: 0.7;
-            margin-top: 1rem;
-        }
-        .status-dot {
-            height: 12px;
-            width: 12px;
-            background-color: #00ffcc;
-            border-radius: 50%;
+
+        .dot {
             display: inline-block;
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            background: #00ffcc;
             box-shadow: 0 0 8px #00ffcc;
-            margin-right: 8px;
             animation: pulse 1.5s infinite;
+            margin-right: 6px;
         }
         @keyframes pulse {
-            0% { transform: scale(0.95); opacity: 0.8; }
+            0%,100% { transform: scale(0.9); opacity: 0.7; }
             50% { transform: scale(1.1); opacity: 1; }
-            100% { transform: scale(0.95); opacity: 0.8; }
         }
     </style>
 </head>
 <body>
 
-    <h1><span class="status-dot"></span>Realtime IoT Dashboard</h1>
-    
-    <div class="dashboard">
-        <!-- การ์ดอุณหภูมิ -->
-        <div class="card">
-            <div class="label">🌡️ อุณหภูมิ (Temperature)</div>
-            <div class="value"><span id="tempValue">--</span> °C</div>
-            <div class="time" id="tempTime">รอข้อมูล...</div>
-        </div>
+    <h1><span class="dot"></span>Realtime IoT Dashboard</h1>
+    <p class="subtitle" id="lastUpdate">รอข้อมูล...</p>
 
-        <!-- การ์ดความชื้น -->
-        <div class="card">
-            <div class="label">💧 ความชื้น (Humidity)</div>
-            <div class="value"><span id="humValue">--</span> %</div>
-            <div class="time" id="humTime">รอข้อมูล...</div>
+    <div class="grid">
+        <div class="card card-temp">
+            <div class="card-icon">🌡️</div>
+            <div class="card-label">อุณหภูมิ (Temperature)</div>
+            <div class="card-value" id="val-temp">--</div>
+            <div class="card-unit">°C</div>
+        </div>
+        <div class="card card-humi">
+            <div class="card-icon">💧</div>
+            <div class="card-label">ความชื้น (Humidity)</div>
+            <div class="card-value" id="val-humi">--</div>
+            <div class="card-unit">%</div>
+        </div>
+        <div class="card card-light">
+            <div class="card-icon">☀️</div>
+            <div class="card-label">ความสว่าง (Light)</div>
+            <div class="card-value" id="val-light">--</div>
+            <div class="card-unit">lux</div>
+        </div>
+        <div class="card card-co2">
+            <div class="card-icon">🌿</div>
+            <div class="card-label">คาร์บอนไดออกไซด์ (CO₂)</div>
+            <div class="card-value" id="val-co2">--</div>
+            <div class="card-unit">ppm</div>
+        </div>
+        <div class="card card-pres">
+            <div class="card-icon">🌀</div>
+            <div class="card-label">ความดันอากาศ (Pressure)</div>
+            <div class="card-value" id="val-pressure">--</div>
+            <div class="card-unit">hPa</div>
+        </div>
+        <div class="card card-noise">
+            <div class="card-icon">🔊</div>
+            <div class="card-label">ระดับเสียง (Noise)</div>
+            <div class="card-value" id="val-noise">--</div>
+            <div class="card-unit">dB</div>
         </div>
     </div>
 
-    <!-- นำเข้า Firebase JS SDK -->
+    <div class="status-bar" id="statusBar">กำลังเชื่อมต่อ Firebase...</div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
         import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
 
-        // === ตั้งค่า Firebase === 
-        // เปลี่ยน URL ด้านล่างเป็นของคุณ 
-        // สังเกตจากรูปภาพ คาดว่าน่าจะเป็น panda-507a6 
         const firebaseConfig = {
-            databaseURL: "https://panda-507a6-default-rtdb.asia-southeast1.firebasedatabase.app"
+            databaseURL: "https://iot-107-default-rtdb.asia-southeast1.firebasedatabase.app"
         };
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
-        
-        // ชี้ไปที่ฐานข้อมูล node ชื่อ 'latest'
         const latestRef = ref(db, 'latest');
 
-        // ฟังก์ชันรับข้อมูลแบบ Realtime
         onValue(latestRef, (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                // ดึงค่ามาแสดงบนหน้าเว็บ (ปัดทศนิยม 1 ตำแหน่ง)
-                if (data.temperature) {
-                    document.getElementById('tempValue').innerText = data.temperature.toFixed(1);
-                }
-                if (data.humidity) {
-                    document.getElementById('humValue').innerText = data.humidity.toFixed(1);
-                }
-                
-                // อัปเดตเวลาล่าสุด
-                if (data.timestamp) {
-                    const date = new Date(data.timestamp * 1000);
-                    const timeString = `อัปเดตล่าสุด: ${date.toLocaleTimeString('th-TH')}`;
-                    document.getElementById('tempTime').innerText = timeString;
-                    document.getElementById('humTime').innerText = timeString;
-                }
+            const d = snapshot.val();
+            if (!d) return;
+
+            // อัปเดตค่าทั้ง 6 ตัว
+            if (d.temp     != null) document.getElementById('val-temp').innerText     = d.temp.toFixed(1);
+            if (d.humi     != null) document.getElementById('val-humi').innerText     = d.humi.toFixed(1);
+            if (d.light    != null) document.getElementById('val-light').innerText    = Math.round(d.light);
+            if (d.co2      != null) document.getElementById('val-co2').innerText      = Math.round(d.co2);
+            if (d.pressure != null) document.getElementById('val-pressure').innerText = d.pressure.toFixed(1);
+            if (d.noise    != null) document.getElementById('val-noise').innerText    = Math.round(d.noise);
+
+            // อัปเดตเวลา
+            if (d.timestamp) {
+                const date = new Date(d.timestamp * 1000);
+                document.getElementById('lastUpdate').innerText =
+                    `อัปเดตล่าสุด: ${date.toLocaleTimeString('th-TH')}`;
             }
+
+            document.getElementById('statusBar').innerText = '🟢 เชื่อมต่อ Firebase สำเร็จ — ข้อมูลอัปเดต Realtime';
+        }, (error) => {
+            document.getElementById('statusBar').innerText = '🔴 เชื่อมต่อ Firebase ไม่ได้: ' + error.message;
         });
     </script>
 </body>
