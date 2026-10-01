@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Realtime IoT Dashboard</title>
+    <!-- ใช้ Google Fonts: Kanit -->
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Kanit', sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+        }
+        h1 {
+            margin-bottom: 2rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .dashboard {
+            display: flex;
+            gap: 2rem;
+            width: 100%;
+            max-width: 800px;
+            flex-wrap: wrap; /* รองรับมือถือ */
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 2rem;
+            flex: 1 1 300px; /* ยืดหยุ่นขนาด */
+            text-align: center;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            transition: transform 0.3s;
+        }
+        .card:hover { 
+            transform: translateY(-5px); 
+        }
+        .value {
+            font-size: 4rem;
+            font-weight: 600;
+            margin: 1rem 0;
+            color: #00ffcc;
+            text-shadow: 0 0 10px rgba(0, 255, 204, 0.5);
+        }
+        .label {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        .time {
+            font-size: 0.9rem;
+            opacity: 0.7;
+            margin-top: 1rem;
+        }
+        .status-dot {
+            height: 12px;
+            width: 12px;
+            background-color: #00ffcc;
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 0 8px #00ffcc;
+            margin-right: 8px;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(0.95); opacity: 0.8; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1><span class="status-dot"></span>Realtime IoT Dashboard</h1>
+    
+    <div class="dashboard">
+        <!-- การ์ดอุณหภูมิ -->
+        <div class="card">
+            <div class="label">🌡️ อุณหภูมิ (Temperature)</div>
+            <div class="value"><span id="tempValue">--</span> °C</div>
+            <div class="time" id="tempTime">รอข้อมูล...</div>
+        </div>
+
+        <!-- การ์ดความชื้น -->
+        <div class="card">
+            <div class="label">💧 ความชื้น (Humidity)</div>
+            <div class="value"><span id="humValue">--</span> %</div>
+            <div class="time" id="humTime">รอข้อมูล...</div>
+        </div>
+    </div>
+
+    <!-- นำเข้า Firebase JS SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
+        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
+
+        // === ตั้งค่า Firebase === 
+        // เปลี่ยน URL ด้านล่างเป็นของคุณ 
+        // สังเกตจากรูปภาพ คาดว่าน่าจะเป็น panda-507a6 
+        const firebaseConfig = {
+            databaseURL: "https://panda-507a6-default-rtdb.asia-southeast1.firebasedatabase.app"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        
+        // ชี้ไปที่ฐานข้อมูล node ชื่อ 'latest'
+        const latestRef = ref(db, 'latest');
+
+        // ฟังก์ชันรับข้อมูลแบบ Realtime
+        onValue(latestRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                // ดึงค่ามาแสดงบนหน้าเว็บ (ปัดทศนิยม 1 ตำแหน่ง)
+                if (data.temperature) {
+                    document.getElementById('tempValue').innerText = data.temperature.toFixed(1);
+                }
+                if (data.humidity) {
+                    document.getElementById('humValue').innerText = data.humidity.toFixed(1);
+                }
+                
+                // อัปเดตเวลาล่าสุด
+                if (data.timestamp) {
+                    const date = new Date(data.timestamp * 1000);
+                    const timeString = `อัปเดตล่าสุด: ${date.toLocaleTimeString('th-TH')}`;
+                    document.getElementById('tempTime').innerText = timeString;
+                    document.getElementById('humTime').innerText = timeString;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
