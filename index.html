@@ -1,182 +1,399 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Realtime IoT Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESP32 Realtime Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
-        body {
-            font-family: 'Kanit', sans-serif;
-            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
-            color: white;
-            min-height: 100vh;
-            padding: 2rem 1rem;
-        }
+    body {
+      font-family: 'Kanit', sans-serif;
+      background: #f0f4f8;
+      color: #1a202c;
+      min-height: 100vh;
+    }
 
-        h1 {
-            text-align: center;
-            font-size: 1.8rem;
-            margin-bottom: 0.5rem;
-            text-shadow: 2px 2px 8px rgba(0,0,0,0.5);
-        }
+    /* ===== HEADER ===== */
+    header {
+      background: white;
+      padding: 0 2rem;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      position: sticky; top: 0; z-index: 100;
+    }
+    .logo {
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+    .logo-badge {
+      background: linear-gradient(135deg, #4facfe, #00f2fe);
+      color: white; font-weight: 700; font-size: 0.85rem;
+      padding: 0.3rem 0.6rem; border-radius: 8px;
+    }
+    .logo-title { font-size: 1.3rem; font-weight: 700; color: #1a202c; }
+    .logo-sub { font-size: 0.75rem; color: #718096; font-weight: 400; }
+    .live-badge {
+      display: flex; align-items: center; gap: 0.4rem;
+      background: #f0fff4; border: 1px solid #9ae6b4;
+      color: #276749; font-size: 0.8rem; font-weight: 500;
+      padding: 0.35rem 0.8rem; border-radius: 99px;
+    }
+    .live-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #48bb78;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity: 0.6; transform: scale(0.9); }
+      50% { opacity: 1; transform: scale(1.2); }
+    }
 
-        .subtitle {
-            text-align: center;
-            font-size: 0.9rem;
-            opacity: 0.6;
-            margin-bottom: 2rem;
-        }
+    /* ===== MAIN ===== */
+    main { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
 
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            gap: 1.5rem;
-            max-width: 1000px;
-            margin: 0 auto;
-        }
+    /* ===== DEVICE CARD ===== */
+    .device-card {
+      background: white; border-radius: 12px; padding: 1rem 1.5rem;
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .device-name { font-size: 1.1rem; font-weight: 600; }
+    .device-path { font-size: 0.8rem; color: #4299e1; margin-top: 2px; }
+    .device-time { text-align: right; }
+    .device-time .clock { font-size: 1.4rem; font-weight: 600; }
+    .device-time .update-info { font-size: 0.75rem; color: #718096; margin-top: 2px; }
 
-        .card {
-            background: rgba(255,255,255,0.08);
-            backdrop-filter: blur(12px);
-            border-radius: 16px;
-            padding: 1.5rem;
-            border: 1px solid rgba(255,255,255,0.12);
-            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-            transition: transform 0.3s, box-shadow 0.3s;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-        }
-        .card:hover {
-            transform: translateY(-6px);
-            box-shadow: 0 16px 40px rgba(0,0,0,0.4);
-        }
+    /* ===== SENSOR CARDS ===== */
+    .sensor-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .sensor-card {
+      background: white; border-radius: 12px; padding: 1.2rem 1.5rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+      position: relative; overflow: hidden;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .sensor-card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,0.1); }
+    .sensor-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 0.6rem;
+    }
+    .sensor-label {
+      display: flex; align-items: center; gap: 0.4rem;
+      font-size: 0.85rem; color: #718096; font-weight: 400;
+    }
+    .sensor-label .dot {
+      width: 10px; height: 10px; border-radius: 50%;
+    }
+    .sensor-delta {
+      font-size: 0.75rem; font-weight: 500; padding: 0.15rem 0.5rem;
+      border-radius: 99px;
+    }
+    .delta-up { background: #fff5f5; color: #e53e3e; }
+    .delta-down { background: #f0fff4; color: #38a169; }
+    .sensor-value {
+      font-size: 2.8rem; font-weight: 700; line-height: 1;
+      margin: 0.3rem 0;
+    }
+    .sensor-key { font-size: 0.75rem; color: #a0aec0; }
+    .sensor-minmax {
+      font-size: 0.75rem; color: #718096; margin-top: 0.4rem;
+      text-align: right;
+    }
 
-        .card-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
-        .card-label { font-size: 1rem; opacity: 0.8; margin-bottom: 0.5rem; }
-        .card-value {
-            font-size: 3rem;
-            font-weight: 600;
-            line-height: 1;
-            margin-bottom: 0.25rem;
-        }
-        .card-unit { font-size: 1rem; opacity: 0.7; }
+    /* Colors per sensor */
+    .c-temp   { color: #e53e3e; }
+    .c-humi   { color: #3182ce; }
+    .c-light  { color: #d69e2e; }
+    .c-co2    { color: #805ad5; }
+    .c-pres   { color: #00b5d8; }
+    .c-noise  { color: #d53f8c; }
 
-        /* สีแต่ละการ์ด */
-        .card-temp  .card-value { color: #ff6b6b; text-shadow: 0 0 12px rgba(255,107,107,0.5); }
-        .card-humi  .card-value { color: #74b9ff; text-shadow: 0 0 12px rgba(116,185,255,0.5); }
-        .card-light .card-value { color: #ffeaa7; text-shadow: 0 0 12px rgba(255,234,167,0.5); }
-        .card-co2   .card-value { color: #a29bfe; text-shadow: 0 0 12px rgba(162,155,254,0.5); }
-        .card-pres  .card-value { color: #00cec9; text-shadow: 0 0 12px rgba(0,206,201,0.5); }
-        .card-noise .card-value { color: #fd79a8; text-shadow: 0 0 12px rgba(253,121,168,0.5); }
+    .dot-temp   { background: #e53e3e; }
+    .dot-humi   { background: #3182ce; }
+    .dot-light  { background: #d69e2e; }
+    .dot-co2    { background: #805ad5; }
+    .dot-pres   { background: #00b5d8; }
+    .dot-noise  { background: #d53f8c; }
 
-        .status-bar {
-            text-align: center;
-            margin-top: 2rem;
-            font-size: 0.85rem;
-            opacity: 0.6;
-        }
-
-        .dot {
-            display: inline-block;
-            width: 10px; height: 10px;
-            border-radius: 50%;
-            background: #00ffcc;
-            box-shadow: 0 0 8px #00ffcc;
-            animation: pulse 1.5s infinite;
-            margin-right: 6px;
-        }
-        @keyframes pulse {
-            0%,100% { transform: scale(0.9); opacity: 0.7; }
-            50% { transform: scale(1.1); opacity: 1; }
-        }
-    </style>
+    /* ===== CHART CARDS ===== */
+    .chart-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1rem;
+    }
+    .chart-card {
+      background: white; border-radius: 12px; padding: 1.2rem 1.5rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .chart-header {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      margin-bottom: 0.5rem;
+    }
+    .chart-title { font-size: 1rem; font-weight: 600; }
+    .chart-sub { font-size: 0.72rem; color: #a0aec0; }
+    .chart-current { font-size: 1.1rem; font-weight: 700; }
+    canvas { width: 100% !important; height: 150px !important; }
+  </style>
 </head>
 <body>
 
-    <h1><span class="dot"></span>Realtime IoT Dashboard</h1>
-    <p class="subtitle" id="lastUpdate">รอข้อมูล...</p>
-
-    <div class="grid">
-        <div class="card card-temp">
-            <div class="card-icon">🌡️</div>
-            <div class="card-label">อุณหภูมิ (Temperature)</div>
-            <div class="card-value" id="val-temp">--</div>
-            <div class="card-unit">°C</div>
-        </div>
-        <div class="card card-humi">
-            <div class="card-icon">💧</div>
-            <div class="card-label">ความชื้น (Humidity)</div>
-            <div class="card-value" id="val-humi">--</div>
-            <div class="card-unit">%</div>
-        </div>
-        <div class="card card-light">
-            <div class="card-icon">☀️</div>
-            <div class="card-label">ความสว่าง (Light)</div>
-            <div class="card-value" id="val-light">--</div>
-            <div class="card-unit">lux</div>
-        </div>
-        <div class="card card-co2">
-            <div class="card-icon">🌿</div>
-            <div class="card-label">คาร์บอนไดออกไซด์ (CO₂)</div>
-            <div class="card-value" id="val-co2">--</div>
-            <div class="card-unit">ppm</div>
-        </div>
-        <div class="card card-pres">
-            <div class="card-icon">🌀</div>
-            <div class="card-label">ความดันอากาศ (Pressure)</div>
-            <div class="card-value" id="val-pressure">--</div>
-            <div class="card-unit">hPa</div>
-        </div>
-        <div class="card card-noise">
-            <div class="card-icon">🔊</div>
-            <div class="card-label">ระดับเสียง (Noise)</div>
-            <div class="card-value" id="val-noise">--</div>
-            <div class="card-unit">dB</div>
-        </div>
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-badge">IoT</div>
+    <div>
+      <div class="logo-title">ESP32 Realtime Dashboard</div>
+      <div class="logo-sub">Firebase Realtime Database • อัปเดตอัตโนมัติ</div>
     </div>
+  </div>
+  <div class="live-badge" id="liveBadge">
+    <div class="live-dot"></div>
+    <span>LIVE • กำลังเชื่อมต่อ...</span>
+  </div>
+</header>
 
-    <div class="status-bar" id="statusBar">กำลังเชื่อมต่อ Firebase...</div>
+<main>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
+  <!-- DEVICE INFO -->
+  <div class="device-card">
+    <div>
+      <div class="device-name">DEVICE: ESP32</div>
+      <div class="device-path">/latest</div>
+    </div>
+    <div class="device-time">
+      <div class="clock" id="clock">--:--:--</div>
+      <div class="update-info" id="updateInfo">รอข้อมูล...</div>
+    </div>
+  </div>
 
-        const firebaseConfig = {
-            databaseURL: "https://iot-107-default-rtdb.asia-southeast1.firebasedatabase.app"
-        };
+  <!-- SENSOR CARDS -->
+  <div class="sensor-grid">
+    <div class="sensor-card">
+      <div class="sensor-header">
+        <div class="sensor-label"><div class="dot dot-temp"></div>🌡️ อุณหภูมิ</div>
+        <div class="sensor-delta delta-up" id="delta-temp">--</div>
+      </div>
+      <div class="sensor-value c-temp"><span id="v-temp">--</span> <small style="font-size:1rem">°C</small></div>
+      <div class="sensor-key">temp</div>
+      <div class="sensor-minmax">ต่ำสุด <span id="min-temp">--</span> · สูงสุด <span id="max-temp">--</span></div>
+    </div>
+    <div class="sensor-card">
+      <div class="sensor-header">
+        <div class="sensor-label"><div class="dot dot-humi"></div>💧 ความชื้นสัมพัทธ์</div>
+        <div class="sensor-delta delta-down" id="delta-humi">--</div>
+      </div>
+      <div class="sensor-value c-humi"><span id="v-humi">--</span> <small style="font-size:1rem">%</small></div>
+      <div class="sensor-key">humi</div>
+      <div class="sensor-minmax">ต่ำสุด <span id="min-humi">--</span> · สูงสุด <span id="max-humi">--</span></div>
+    </div>
+    <div class="sensor-card">
+      <div class="sensor-header">
+        <div class="sensor-label"><div class="dot dot-light"></div>☀️ ความสว่าง</div>
+        <div class="sensor-delta delta-up" id="delta-light">--</div>
+      </div>
+      <div class="sensor-value c-light"><span id="v-light">--</span> <small style="font-size:1rem">lux</small></div>
+      <div class="sensor-key">light</div>
+      <div class="sensor-minmax">ต่ำสุด <span id="min-light">--</span> · สูงสุด <span id="max-light">--</span></div>
+    </div>
+    <div class="sensor-card">
+      <div class="sensor-header">
+        <div class="sensor-label"><div class="dot dot-co2"></div>🌿 CO₂</div>
+        <div class="sensor-delta delta-up" id="delta-co2">--</div>
+      </div>
+      <div class="sensor-value c-co2"><span id="v-co2">--</span> <small style="font-size:1rem">ppm</small></div>
+      <div class="sensor-key">co2</div>
+      <div class="sensor-minmax">ต่ำสุด <span id="min-co2">--</span> · สูงสุด <span id="max-co2">--</span></div>
+    </div>
+    <div class="sensor-card">
+      <div class="sensor-header">
+        <div class="sensor-label"><div class="dot dot-pres"></div>🌀 ความดัน</div>
+        <div class="sensor-delta delta-down" id="delta-pressure">--</div>
+      </div>
+      <div class="sensor-value c-pres"><span id="v-pressure">--</span> <small style="font-size:1rem">hPa</small></div>
+      <div class="sensor-key">pressure</div>
+      <div class="sensor-minmax">ต่ำสุด <span id="min-pressure">--</span> · สูงสุด <span id="max-pressure">--</span></div>
+    </div>
+    <div class="sensor-card">
+      <div class="sensor-header">
+        <div class="sensor-label"><div class="dot dot-noise"></div>🔊 ระดับเสียง</div>
+        <div class="sensor-delta delta-up" id="delta-noise">--</div>
+      </div>
+      <div class="sensor-value c-noise"><span id="v-noise">--</span> <small style="font-size:1rem">dB</small></div>
+      <div class="sensor-key">noise</div>
+      <div class="sensor-minmax">ต่ำสุด <span id="min-noise">--</span> · สูงสุด <span id="max-noise">--</span></div>
+    </div>
+  </div>
 
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-        const latestRef = ref(db, 'latest');
+  <!-- CHARTS -->
+  <div class="chart-grid">
+    <div class="chart-card">
+      <div class="chart-header">
+        <div><div class="chart-title">อุณหภูมิ</div><div class="chart-sub">ข้อมูลตั้งแต่เปิดหน้านี้</div></div>
+        <div class="chart-current c-temp" id="cur-temp">-- °C</div>
+      </div>
+      <canvas id="chart-temp"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <div><div class="chart-title">ความชื้นสัมพัทธ์</div><div class="chart-sub">ข้อมูลตั้งแต่เปิดหน้านี้</div></div>
+        <div class="chart-current c-humi" id="cur-humi">-- %</div>
+      </div>
+      <canvas id="chart-humi"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <div><div class="chart-title">ความสว่าง</div><div class="chart-sub">ข้อมูลตั้งแต่เปิดหน้านี้</div></div>
+        <div class="chart-current c-light" id="cur-light">-- lux</div>
+      </div>
+      <canvas id="chart-light"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <div><div class="chart-title">CO₂</div><div class="chart-sub">ข้อมูลตั้งแต่เปิดหน้านี้</div></div>
+        <div class="chart-current c-co2" id="cur-co2">-- ppm</div>
+      </div>
+      <canvas id="chart-co2"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <div><div class="chart-title">ความดันอากาศ</div><div class="chart-sub">ข้อมูลตั้งแต่เปิดหน้านี้</div></div>
+        <div class="chart-current c-pres" id="cur-pressure">-- hPa</div>
+      </div>
+      <canvas id="chart-pressure"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <div><div class="chart-title">ระดับเสียง</div><div class="chart-sub">ข้อมูลตั้งแต่เปิดหน้านี้</div></div>
+        <div class="chart-current c-noise" id="cur-noise">-- dB</div>
+      </div>
+      <canvas id="chart-noise"></canvas>
+    </div>
+  </div>
 
-        onValue(latestRef, (snapshot) => {
-            const d = snapshot.val();
-            if (!d) return;
+</main>
 
-            // อัปเดตค่าทั้ง 6 ตัว
-            if (d.temp     != null) document.getElementById('val-temp').innerText     = d.temp.toFixed(1);
-            if (d.humi     != null) document.getElementById('val-humi').innerText     = d.humi.toFixed(1);
-            if (d.light    != null) document.getElementById('val-light').innerText    = Math.round(d.light);
-            if (d.co2      != null) document.getElementById('val-co2').innerText      = Math.round(d.co2);
-            if (d.pressure != null) document.getElementById('val-pressure').innerText = d.pressure.toFixed(1);
-            if (d.noise    != null) document.getElementById('val-noise').innerText    = Math.round(d.noise);
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
+  import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
 
-            // อัปเดตเวลา
-            if (d.timestamp) {
-                const date = new Date(d.timestamp * 1000);
-                document.getElementById('lastUpdate').innerText =
-                    `อัปเดตล่าสุด: ${date.toLocaleTimeString('th-TH')}`;
-            }
+  const firebaseConfig = {
+    databaseURL: "https://iot-107-default-rtdb.asia-southeast1.firebasedatabase.app"
+  };
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
 
-            document.getElementById('statusBar').innerText = '🟢 เชื่อมต่อ Firebase สำเร็จ — ข้อมูลอัปเดต Realtime';
-        }, (error) => {
-            document.getElementById('statusBar').innerText = '🔴 เชื่อมต่อ Firebase ไม่ได้: ' + error.message;
-        });
-    </script>
+  // ===== CLOCK =====
+  setInterval(() => {
+    document.getElementById('clock').innerText = new Date().toLocaleTimeString('th-TH');
+  }, 1000);
+
+  // ===== CHARTS SETUP =====
+  const sensors = [
+    { key: 'temp',     label: 'อุณหภูมิ',      color: '#e53e3e', unit: '°C',   dp: 1 },
+    { key: 'humi',     label: 'ความชื้น',       color: '#3182ce', unit: '%',    dp: 1 },
+    { key: 'light',    label: 'ความสว่าง',      color: '#d69e2e', unit: 'lux',  dp: 0 },
+    { key: 'co2',      label: 'CO₂',            color: '#805ad5', unit: 'ppm',  dp: 0 },
+    { key: 'pressure', label: 'ความดัน',         color: '#00b5d8', unit: 'hPa',  dp: 1 },
+    { key: 'noise',    label: 'เสียง',           color: '#d53f8c', unit: 'dB',   dp: 0 },
+  ];
+
+  const charts = {};
+  const historyData = {}; // { key: [values], labels: [times] }
+  const MAX_POINTS = 20;
+  const prevValues = {};
+  const minVals = {};
+  const maxVals = {};
+
+  sensors.forEach(s => {
+    historyData[s.key] = { values: [], labels: [] };
+    const ctx = document.getElementById('chart-' + s.key).getContext('2d');
+    charts[s.key] = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [{
+          data: [],
+          borderColor: s.color,
+          backgroundColor: s.color + '18',
+          borderWidth: 2,
+          pointRadius: 3,
+          pointBackgroundColor: s.color,
+          fill: true,
+          tension: 0.4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { font: { family: 'Kanit', size: 10 }, maxRotation: 0 }, grid: { display: false } },
+          y: { ticks: { font: { family: 'Kanit', size: 10 } }, grid: { color: '#f7fafc' } }
+        }
+      }
+    });
+  });
+
+  // ===== FIREBASE LISTENER =====
+  onValue(ref(db, 'latest'), (snapshot) => {
+    const d = snapshot.val();
+    if (!d) return;
+
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const dateStr = now.toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+    document.getElementById('clock').innerText = `${dateStr} ${timeStr}`;
+    document.getElementById('updateInfo').innerText = `ข้อมูลเมื่อ ${timeStr}`;
+    document.getElementById('liveBadge').innerHTML = `<div class="live-dot"></div><span>LIVE • เชื่อมต่อ Firebase แล้ว</span>`;
+
+    sensors.forEach(s => {
+      const val = d[s.key];
+      if (val == null) return;
+
+      const rounded = s.dp === 0 ? Math.round(val) : parseFloat(val.toFixed(s.dp));
+
+      // Update card value
+      document.getElementById('v-' + s.key).innerText = rounded;
+      document.getElementById('cur-' + s.key).innerText = rounded + ' ' + s.unit;
+
+      // Delta
+      const deltaEl = document.getElementById('delta-' + s.key);
+      if (prevValues[s.key] != null) {
+        const diff = val - prevValues[s.key];
+        const sign = diff >= 0 ? '▲' : '▼';
+        deltaEl.innerText = sign + ' ' + Math.abs(diff).toFixed(s.dp);
+        deltaEl.className = 'sensor-delta ' + (diff >= 0 ? 'delta-up' : 'delta-down');
+      }
+      prevValues[s.key] = val;
+
+      // Min/Max
+      if (minVals[s.key] == null || val < minVals[s.key]) minVals[s.key] = val;
+      if (maxVals[s.key] == null || val > maxVals[s.key]) maxVals[s.key] = val;
+      document.getElementById('min-' + s.key).innerText = s.dp === 0 ? Math.round(minVals[s.key]) : minVals[s.key].toFixed(s.dp);
+      document.getElementById('max-' + s.key).innerText = s.dp === 0 ? Math.round(maxVals[s.key]) : maxVals[s.key].toFixed(s.dp);
+
+      // Update chart
+      const h = historyData[s.key];
+      h.values.push(rounded);
+      h.labels.push(timeStr);
+      if (h.values.length > MAX_POINTS) { h.values.shift(); h.labels.shift(); }
+
+      charts[s.key].data.labels = h.labels;
+      charts[s.key].data.datasets[0].data = h.values;
+      charts[s.key].update('none');
+    });
+  });
+</script>
 </body>
 </html>
